@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{PAGE_TITLE}}</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            background-color: #f8f9fa;
+        }
+        .controls {
+            padding: 10px 20px;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+        button {
+            padding: 6px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .controls label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #444;
+            user-select: none;
+        }
+        .controls select {
+            padding: 4px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 12px;
+        }
+        #diagram-container {
+            flex: 1;
+            width: 100%;
+            background: white;
+            position: relative;
+        }
+        #svgHost {
+            width: 100%;
+            height: 100%;
+        }
+        #diagram-container svg {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Debug panel (hidden by default) */
+        #debugPanel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            max-height: 45%;
+            background: #0f172a; /* slate-900 */
+            color: #e2e8f0;      /* slate-200 */
+            border-top: 1px solid rgba(255,255,255,0.12);
+            display: none;
+            box-sizing: border-box;
+            padding: 10px;
+            overflow: auto;
+            z-index: 200;
+        }
+        #debugPanel .debugHeader {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        #debugPanel .debugHeader small {
+            color: #94a3b8; /* slate-400 */
+        }
+        #debugPanel .debugButtons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        #debugPanel .debugButtons button {
+            background-color: #334155; /* slate-700 */
+        }
+        #debugPanel .debugButtons button:hover {
+            background-color: #475569; /* slate-600 */
+        }
+        #errorBox {
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.35;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #fecaca; /* red-200 */
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: none;
+        }
+        #sourceEditor {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 180px;
+            resize: vertical;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: #020617; /* slate-950 */
+            color: #e2e8f0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        #diagramDefinition {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <strong>{{HEADER_TITLE}}</strong>
+        <button onclick="resetZoom()">Reset Zoom</button>
+        <button onclick="toggleDebug()">Debug</button>
+        <span style="font-size: 12px; color: #666;">Scroll to zoom • Drag to pan</span>
+    </div>
+    <div id="diagram-container">
+        <div id="svgHost"></div>
+        <div id="debugPanel">
+            <div class="debugHeader">
+                <strong>Mermaid Debug</strong>
+                <small>Shows the Mermaid source and any syntax/render error</small>
+            </div>
+            <div class="debugButtons">
+                <button id="btnRender" type="button">Render from Source</button>
+                <button type="button" onclick="copySource()">Copy Source</button>
+                <button type="button" onclick="openSourceTab()">Open Source in New Tab</button>
+                <button type="button" onclick="toggleDebug(false)">Close</button>
+            </div>
+            <div id="errorBox"></div>
+            <textarea id="sourceEditor" spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <pre id="diagramDefinition">{{MERMAID_CODE}}</pre>
+
+    <script>
+        let panZoomInstance;
+        let mermaidInitialized = false;
+        let lastRenderedSvgString = '';
+
+        function toggleDebug(force) {
+            const panel = document.getElementById('debugPanel');
+            const shouldShow = (typeof force === 'boolean') ? force : (panel.style.display !== 'block');
+            panel.style.display = shouldShow ? 'block' : 'none';
+        }
+
+        function setError(text) {
+            const errorBox = document.getElementById('errorBox');
+            if (!text) {
+                errorBox.textContent = '';
+                errorBox.style.display = 'none';
+                return;
+            }
+            errorBox.textContent = text;
+            errorBox.style.display = 'block';
+        }
+
+        function showJsError(err, context = '') {
+            const message = (err && (err.message || err.str)) ? (err.message || err.str) : String(err);
+            const stack = (err && err.stack) ? `\n\n${err.stack}` : '';
+            const prefix = context ? `${context}: ` : '';
+            setError(`${prefix}${message}${stack}`);
+            toggleDebug(true);
+        }
+
+        function getSource() {
+            return document.getElementById('sourceEditor').value || '';
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function copySource() {
+            const text = getSource();
+            if (!navigator.clipboard) {
+                alert('Clipboard API not available in this browser context.');
+                return;
+            }
+            navigator.clipboard.writeText(text).catch((e) => {
+                console.error(e);
+                alert('Copy failed.');
+            });
+        }
+
+        function openSourceTab() {
+            const code = getSource();
+            const w = window.open('about:blank', '_blank');
+            if (!w) {
+                alert('Popup blocked. Allow popups to open the source in a new tab.');
+                return;
+            }
+            w.document.open();
+            w.document.write(`<!doctype html>
+<title>Mermaid Source</title>
+<pre style="white-space: pre-wrap; font-family: ui-monospace, Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.35; padding: 16px;">${escapeHtml(code)}</pre>`);
+            w.document.close();
+        }
+
+        function getMermaidConfig(options = {}) {
+            const htmlLabels = (typeof options.htmlLabels === 'boolean') ? options.htmlLabels : true;
+            return {
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'strict',
+                flowchart: {
+                    useMaxWidth: false,
+                    // NOTE: HTML labels can introduce <foreignObject>, which often makes canvas export fail.
+                    htmlLabels
+                }
+            };
+        }
+
+        function initMermaid(options = {}) {
+            if (typeof mermaid === 'undefined') {
+                throw new Error('Mermaid library did not load. If you are offline or behind a network filter, the CDN scripts may be blocked.');
+            }
+            mermaid.initialize(getMermaidConfig(options));
+            mermaidInitialized = true;
+        }
+
+        function setupPanZoom() {
+            const svgElement = document.querySelector('#svgHost svg');
+            if (!svgElement) return;
+
+            svgElement.removeAttribute('width');
+            svgElement.removeAttribute('height');
+            svgElement.style.maxWidth = 'none';
+
+            if (panZoomInstance && typeof panZoomInstance.destroy === 'function') {
+                panZoomInstance.destroy();
+            }
+
+            if (typeof svgPanZoom !== 'function') {
+                console.warn('svg-pan-zoom did not load; panning/zooming disabled.');
+                return;
+            }
+
+            // Delay one tick so the SVG is fully attached before pan/zoom measures it
+            setTimeout(() => {
+                panZoomInstance = svgPanZoom(svgElement, {
+                    zoomEnabled: true,
+                    controlIconsEnabled: true,
+                    fit: true,
+                    center: true,
+                    minZoom: 0.05,
+                    maxZoom: 50
+                });
+
+                panZoomInstance.resize();
+                panZoomInstance.fit();
+                panZoomInstance.center();
+            }, 0);
+        }
+
+        async function renderFromEditor() {
+            const svgHost = document.getElementById('svgHost');
+            const diagramDefinition = getSource().trim();
+
+            setError('');
+
+            try {
+                initMermaid();
+                const { svg } = await mermaid.render('mermaid-svg', diagramDefinition);
+                lastRenderedSvgString = svg;
+                svgHost.innerHTML = svg;
+                setupPanZoom();
+            } catch (err) {
+                console.error('Mermaid render error:', err);
+
+                const message = (err && (err.message || err.str)) ? (err.message || err.str) : String(err);
+                const stack = (err && err.stack) ? `\n\n${err.stack}` : '';
+                setError(`${message}${stack}`);
+
+                svgHost.innerHTML = '<div style="padding:16px;color:#b00020;font-family:ui-monospace, Menlo, Monaco, Consolas, \"Courier New\", monospace;">Mermaid failed to render. Click <b>Debug</b> to see the error and source.</div>';
+                toggleDebug(true);
+            }
+        }
+
+        function sanitizeFilename(name) {
+            return String(name || 'diagram')
+                .trim()
+                .replace(/\s+/g, '_')
+                .replace(/[^a-zA-Z0-9._-]/g, '_')
+                .replace(/_+/g, '_');
+        }
+
+        function getHtmlBaseName() {
+            // Prefer the actual filename (diagram.html) over document.title.
+            // This makes it possible to download sibling files like diagram.png / diagram.svg reliably.
+            try {
+                const url = new URL(window.location.href);
+                const file = (url.pathname.split('/').pop() || '').trim();
+                const decoded = decodeURIComponent(file || 'diagram.html');
+                const base = decoded.toLowerCase().endsWith('.html') ? decoded.slice(0, -5) : decoded;
+                return sanitizeFilename(base) || 'diagram';
+            } catch (_) {
+                return sanitizeFilename(document.title) || 'diagram';
+            }
+        }
+
+        function getSiblingFileUrl(ext) {
+            const url = new URL(window.location.href);
+            const p = url.pathname;
+            const basePath = p.toLowerCase().endsWith('.html') ? p.slice(0, -5) : p;
+            url.pathname = `${basePath}.${ext}`;
+            return url.toString();
+        }
+
+        function downloadSibling(ext) {
+            // Downloads the pre-rendered sibling file (diagram.png / diagram.svg) if it exists.
+            // This avoids browser canvas security issues.
+            try {
+                const a = document.createElement('a');
+                a.href = getSiblingFileUrl(ext);
+                a.download = `${getHtmlBaseName()}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (e) {
+                console.error(e);
+                showJsError(e, 'Download file failed');
+            }
+        }
+
+        function getExportScale() {
+            const el = document.getElementById('pngScale');
+            const v = el ? parseFloat(el.value) : 2;
+            return Number.isFinite(v) && v > 0 ? v : 2;
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+        }
+
+        async function downloadSvg() {
+            try {
+                if (!lastRenderedSvgString) {
+                    await renderFromEditor();
+                }
+                if (!lastRenderedSvgString) {
+                    throw new Error('Diagram is not ready yet.');
+                }
+                const base = sanitizeFilename(document.title);
+                const blob = new Blob([lastRenderedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+                triggerDownload(blob, `${base}.svg`);
+            } catch (e) {
+                console.error(e);
+                showJsError(e, 'SVG download failed');
+            }
+        }
+
+        async function downloadPng() {
+            setError('');
+
+            try {
+                const diagramDefinition = getSource().trim();
+                if (!diagramDefinition) {
+                    throw new Error('No Mermaid source found to export.');
+                }
+
+                // Re-render in an export-safe mode to reduce "tainted canvas" issues.
+                // Mermaid HTML labels can introduce <foreignObject> which many browsers block from canvas export.
+                initMermaid({ htmlLabels: false });
+                const { svg: exportSvg } = await mermaid.render('mermaid-export', diagramDefinition);
+
+                // Restore normal config for interactive editing/view.
+                initMermaid({ htmlLabels: true });
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(exportSvg, 'image/svg+xml');
+                const svgEl = doc.documentElement;
+
+                svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                svgEl.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+                let width = parseFloat(svgEl.getAttribute('width') || '0');
+                let height = parseFloat(svgEl.getAttribute('height') || '0');
+
+                if (!(width > 0 && height > 0)) {
+                    const vb = (svgEl.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number);
+                    if (vb.length === 4 && vb.every(n => Number.isFinite(n))) {
+                        width = vb[2];
+                        height = vb[3];
+                    }
+                }
+
+                if (!(width > 0 && height > 0)) {
+                    width = 1200;
+                    height = 800;
+                }
+
+                const scale = getExportScale();
+
+                const svgString = new XMLSerializer().serializeToString(svgEl);
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const svgUrl = URL.createObjectURL(svgBlob);
+
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.round(width * scale);
+                        canvas.height = Math.round(height * scale);
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                        ctx.setTransform(scale, 0, 0, scale, 0, 0);
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        try {
+                            canvas.toBlob((blob) => {
+                                if (!blob) {
+                                    showJsError(new Error('PNG export failed (no blob returned).'), 'PNG export failed');
+                                    return;
+                                }
+                                const base = sanitizeFilename(document.title);
+                                triggerDownload(blob, `${base}.png`);
+                            }, 'image/png');
+                        } catch (err) {
+                            // This is where "Tainted canvases may not be exported" typically throws.
+                            const extra = '\n\nWorkarounds:\n- Click Download SVG and convert to PNG in Preview\n- If you generated this with Desktop Commander, look for a sibling PNG next to this HTML (same filename, .png)\n- If you opened this as file://, try serving the folder over HTTP (python3 -m http.server) and open http://localhost:8000/...\n- Or ask me to export a PNG via mermaid-cli on the machine (server-side)';
+                            const e2 = new Error(`${err && err.message ? err.message : String(err)}${extra}`);
+                            e2.name = err && err.name ? err.name : 'SecurityError';
+                            showJsError(e2, 'PNG export blocked by browser security');
+                        }
+                    } finally {
+                        URL.revokeObjectURL(svgUrl);
+                    }
+                };
+
+                img.onerror = (ev) => {
+                    URL.revokeObjectURL(svgUrl);
+                    showJsError(new Error('PNG export failed while loading the SVG image.'), 'PNG export failed');
+                };
+
+                img.src = svgUrl;
+            } catch (e) {
+                console.error(e);
+                const isTaint = (e && (e.name === 'SecurityError')) || String(e).toLowerCase().includes('tainted');
+                if (isTaint) {
+                    const extra = '\n\nWorkarounds:\n- Click Download SVG and convert to PNG in Preview\n- If you generated this with Desktop Commander, look for a sibling PNG next to this HTML (same filename, .png)\n- If you opened this as file://, try serving the folder over HTTP (python3 -m http.server) and open http://localhost:8000/...\n- Or ask me to export a PNG via mermaid-cli on the machine (server-side)';
+                    showJsError(new Error(`${e.message || String(e)}${extra}`), 'PNG export blocked by browser security');
+                } else {
+                    showJsError(e, 'PNG export failed');
+                }
+            }
+        }
+
+        function resetZoom() {
+            if (panZoomInstance) {
+                panZoomInstance.reset();
+                panZoomInstance.fit();
+                panZoomInstance.center();
+            }
+        }
+
+        function initPage() {
+            const initial = document.getElementById('diagramDefinition').textContent.trim();
+            document.getElementById('sourceEditor').value = initial;
+
+            document.getElementById('btnRender').addEventListener('click', () => {
+                renderFromEditor();
+            });
+
+            window.addEventListener('resize', () => {
+                if (panZoomInstance) {
+                    panZoomInstance.resize();
+                    panZoomInstance.fit();
+                    panZoomInstance.center();
+                }
+            });
+
+            // Optional: open debug panel by URL param: ?debug=1
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('debug') === '1') {
+                    toggleDebug(true);
+                }
+            } catch (_) {
+                // Ignore (older browsers)
+            }
+
+            renderFromEditor();
+        }
+
+        // Catch unexpected runtime errors and show them in the Debug panel
+        window.addEventListener('error', (event) => {
+            try {
+                const err = event && event.error ? event.error : new Error(event && event.message ? event.message : 'Unknown error');
+                showJsError(err, 'Runtime error');
+            } catch (_) {
+                // Avoid error loops
+            }
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            try {
+                const reason = event && event.reason ? event.reason : new Error('Unhandled promise rejection');
+                showJsError(reason, 'Unhandled promise rejection');
+            } catch (_) {
+                // Avoid error loops
+            }
+        });
+
+        window.onload = initPage;
+    </script>
+</body>
+</html>
