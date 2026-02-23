@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSV Link Previewer</title>
+  <style>
+    :root { --bg:#0b1020; --panel:#111a33; --text:#eaf0ff; --muted:#a9b6d6; --accent:#7aa2ff; --border:#22305b; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header { padding:16px 18px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, #0e1633, #0b1020); }
+    header h1 { margin:0 0 6px 0; font-size:18px; }
+    header p { margin:0; color:var(--muted); font-size:13px; line-height:1.3; }
+
+    .wrap { padding:16px 18px 28px; }
+    .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .controls .card { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+
+    input[type="file"] { color:var(--muted); }
+    input[type="text"] { background:#0c1430; border:1px solid var(--border); color:var(--text);
+      padding:8px 10px; border-radius:10px; width:min(420px, 70vw); }
+    label { color:var(--muted); font-size:12px; }
+    button { background:#0c1430; border:1px solid var(--border); color:var(--text);
+      padding:8px 10px; border-radius:10px; cursor:pointer; }
+    button:hover { border-color: #3654a8; }
+
+    .stats { color:var(--muted); font-size:12px; }
+
+    .tableWrap { overflow:auto; border-radius:12px; border:1px solid var(--border); }
+    table { border-collapse:collapse; width:100%; font-size:13px; }
+    thead th { position:sticky; top:0; background:#0f1b3f; z-index:2; }
+    th, td { border-bottom:1px solid var(--border); padding:8px 10px; vertical-align:top; }
+    th { text-align:left; color:#dbe4ff; font-weight:600; }
+    td { color:var(--text); }
+    tr:hover td { background:#0c1430; }
+
+    a { color:var(--accent); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+
+    .pill { display:inline-block; padding:2px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:var(--muted); }
+    .hint { margin-top:10px; color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CSV Link Previewer</h1>
+    <p>Open a CSV and browse it as a clickable table (GitHub / LinkedIn / X links become clickable). Works entirely in your browser.</p>
+  </header>
+
+  <div class="wrap">
+    <div class="controls card">
+      <div>
+        <label>CSV file</label><br />
+        <input id="file" type="file" accept=".csv,text/csv" />
+      </div>
+      <div>
+        <label>Search (filters rows)</label><br />
+        <input id="search" type="text" placeholder="e.g. latvia, product, linkedin.com, @handle" />
+      </div>
+      <div>
+        <label>Row limit (rendering)</label><br />
+        <input id="rowLimit" type="text" value="2000" style="width:90px" />
+      </div>
+      <div style="display:flex; gap:8px; align-items:flex-end;">
+        <button id="render">Render</button>
+        <button id="downloadFiltered">Download filtered CSV</button>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="hint">Tip: For huge CSVs (5k+ rows), keep the row limit around 2000 for snappy scrolling, then use Search to narrow down.</div>
+
+    <div style="height:12px"></div>
+
+    <div class="tableWrap">
+      <table id="table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const state = {
+      rows: [],
+      headers: [],
+      filtered: [],
+      fileName: "",
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function looksLikeUrl(value) {
+      const v = String(value || "").trim();
+      return /^https?:\/\//i.test(v) || /\b(linkedin\.com|x\.com|twitter\.com)\b/i.test(v);
+    }
+
+    function normalizeUrl(value) {
+      const v = String(value || "").trim();
+      if (!v) return "";
+      if (/^https?:\/\//i.test(v)) return v;
+      // allow bare domains
+      if (/\b(linkedin\.com|x\.com|twitter\.com)\b/i.test(v)) return "https://" + v.replace(/^\/+/, "");
+      return v;
+    }
+
+    function linkifyCell(header, value) {
+      const v = String(value || "").trim();
+      if (!v) return "";
+
+      // If the cell contains multiple URLs separated by " | ", linkify each.
+      if (v.includes(" | ")) {
+        return v.split(" | ").map(part => {
+          const u = normalizeUrl(part);
+          if (looksLikeUrl(u)) return `<a href="${escapeHtml(u)}" target="_blank" rel="noreferrer">${escapeHtml(part)}</a>`;
+          return escapeHtml(part);
+        }).join(" <span class=\"pill\">|</span> ");
+      }
+
+      const u = normalizeUrl(v);
+      if (looksLikeUrl(u)) {
+        return `<a href="${escapeHtml(u)}" target="_blank" rel="noreferrer">${escapeHtml(v)}</a>`;
+      }
+      return escapeHtml(v);
+    }
+
+    function setStats(text) {
+      document.getElementById('stats').textContent = text;
+    }
+
+    function filterRows() {
+      const q = document.getElementById('search').value.trim().toLowerCase();
+      if (!q) {
+        state.filtered = state.rows.slice();
+        return;
+      }
+      state.filtered = state.rows.filter(r => {
+        return state.headers.some(h => String(r[h] ?? "").toLowerCase().includes(q));
+      });
+    }
+
+    function renderTable() {
+      filterRows();
+      const limitRaw = document.getElementById('rowLimit').value.trim();
+      const limit = Math.max(1, parseInt(limitRaw || "2000", 10) || 2000);
+      const displayRows = state.filtered.slice(0, limit);
+
+      const thead = document.querySelector('#table thead');
+      const tbody = document.querySelector('#table tbody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      // Header
+      const trh = document.createElement('tr');
+      for (const h of state.headers) {
+        const th = document.createElement('th');
+        th.textContent = h;
+        trh.appendChild(th);
+      }
+      thead.appendChild(trh);
+
+      // Body
+      for (const row of displayRows) {
+        const tr = document.createElement('tr');
+        for (const h of state.headers) {
+          const td = document.createElement('td');
+          td.innerHTML = linkifyCell(h, row[h]);
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+
+      setStats(`Loaded: ${state.rows.length} rows • Filtered: ${state.filtered.length} rows • Showing: ${displayRows.length} rows`);
+    }
+
+    function toCsv(rows, headers) {
+      const esc = (v) => {
+        const s = String(v ?? "");
+        if (/[\",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }
+      const lines = [];
+      lines.push(headers.map(esc).join(','));
+      for (const r of rows) {
+        lines.push(headers.map(h => esc(r[h])).join(','));
+      }
+      return lines.join('\n');
+    }
+
+    document.getElementById('render').addEventListener('click', () => {
+      if (!state.rows.length) return;
+      renderTable();
+    });
+
+    document.getElementById('downloadFiltered').addEventListener('click', () => {
+      if (!state.rows.length) return;
+      filterRows();
+      const csv = toCsv(state.filtered, state.headers);
+      const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const base = state.fileName ? state.fileName.replace(/\.csv$/i, '') : 'filtered';
+      a.download = base + '_filtered.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('file').addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      state.fileName = file.name;
+      setStats('Parsing CSV...');
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: false,
+        complete: (results) => {
+          state.rows = results.data || [];
+          state.headers = results.meta?.fields || (state.rows[0] ? Object.keys(state.rows[0]) : []);
+          state.filtered = state.rows.slice();
+          renderTable();
+        },
+        error: (err) => {
+          setStats('Failed to parse CSV: ' + (err?.message || String(err)));
+        }
+      });
+    });
+  </script>
+</body>
+</html>
