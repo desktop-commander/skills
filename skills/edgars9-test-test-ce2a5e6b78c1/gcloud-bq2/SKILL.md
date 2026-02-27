@@ -1,6 +1,6 @@
 ---
 name: gcloud-bq2
-description: Use when running BigQuery queries, exploring datasets/tables, or exporting query results via the gcloud/bq CLI.
+ayyydescription: t4est
 ---
 
 aSSaas
