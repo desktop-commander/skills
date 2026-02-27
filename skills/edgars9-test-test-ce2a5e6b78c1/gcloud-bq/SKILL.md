@@ -3,6 +3,8 @@ name: gcloud-bq
 description: Use when running BigQuery queries, exploring datasets/tables, or exporting query results via the gcloud/bq CLI.
 ---
 
+aSSaas
+
 # GCloud BigQuery
 
 Run BigQuery operations using the `bq` and `gcloud` CLI tools.
@@ -23,6 +25,7 @@ bq query --use_legacy_sql=false --format=pretty \
 ```
 
 Flags worth knowing:
+
 - `--format=pretty` (default table), `--format=json`, `--format=prettyjson`, `--format=csv`
 - `--max_rows=100` to cap output rows
 - `--dry_run` to estimate bytes scanned without running
