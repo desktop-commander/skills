@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{DECK_TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-deep: #f5f3ef;
+  --bg-slide: #faf9f6;
+  --bg-card: #ffffff;
+  --text-primary: #1a1a1f;
+  --text-secondary: #555560;
+  --text-dim: #999aa5;
+  --accent: #c47a1a;
+  --accent-blue: #3b7fdb;
+  --accent-green: #2d9b5a;
+  --accent-red: #d14b3e;
+  --accent-purple: #7c5cbf;
+  --accent-glow: rgba(196, 122, 26, 0.12);
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --slide-max-w: 1200px;
+}
+html, body {
+  height: 100%; overflow: hidden; background: var(--bg-deep); color: var(--text-primary);
+  font-family: var(--font-body);
+}
+.deck { position: relative; width: 100%; height: 100%; }
+.slide {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: 60px 80px; background: var(--bg-slide); opacity: 0; visibility: hidden;
+  transform: translateY(18px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.slide.active { opacity: 1; visibility: visible; transform: translateY(0); }
+.inner { width: 100%; max-width: var(--slide-max-w); }
+.hero, .quote, .framework { display: flex; flex-direction: column; gap: 1.4rem; }
+.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 42px; align-items: center; }
+.three-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.card {
+  background: var(--bg-card); border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 16px;
+  padding: 28px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.act-label {
+  position: absolute; top: 28px; left: 80px; color: var(--text-dim); font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+}
+h1, h2, h3, h4 { color: var(--text-primary); }
+h1 {
+  font-family: var(--font-display); font-size: 4rem; font-weight: 400; line-height: 1.08; letter-spacing: -0.02em;
+}
+h2 {
+  font-family: var(--font-display); font-size: 2.8rem; font-weight: 400; line-height: 1.16; letter-spacing: -0.01em;
+}
+h3 {
+  font-size: 0.88rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+}
+p, li { font-size: 1.24rem; line-height: 1.58; color: var(--text-secondary); }
+em, .highlight { color: var(--accent); }
+.muted { color: var(--text-dim); }
+.quote-block {
+  border-left: 3px solid var(--accent); padding-left: 28px; font-family: var(--font-display);
+  font-style: italic; font-size: 2.35rem; line-height: 1.3; color: var(--text-primary);
+}
+ul { padding-left: 1.2rem; }
+img, video {
+  width: 100%; max-height: 430px; object-fit: contain; border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1); background: #f0ede8;
+}
+.progress {
+  position: fixed; top: 0; left: 0; height: 2px; width: 0; background: var(--accent); z-index: 100;
+  transition: width 0.3s ease;
+}
+.slide-counter {
+  position: fixed; bottom: 20px; left: 20px; z-index: 100; font-size: 0.82rem; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.notes-toggle {
+  position: fixed; bottom: 20px; right: 20px; z-index: 100; cursor: pointer; border-radius: 8px;
+  padding: 8px 14px; border: 1px solid rgba(0, 0, 0, 0.1); background: var(--bg-card); color: var(--text-secondary);
+  font: 500 0.82rem var(--font-body);
+}
+.notes-panel {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; transform: translateY(100%);
+  transition: transform 0.3s ease; padding: 20px 40px; background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid rgba(196, 122, 26, 0.25); backdrop-filter: blur(18px);
+}
+.notes-panel.open { transform: translateY(0); }
+.notes-panel p { max-width: 920px; font-size: 0.96rem; line-height: 1.65; }
+.grain {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px;
+}
+.slide.active .stagger > * { animation: fadeUp 0.45s ease both; }
+.slide.active .stagger > *:nth-child(1) { animation-delay: 0.08s; }
+
+.slide.active .stagger > *:nth-child(2) { animation-delay: 0.18s; }
+.slide.active .stagger > *:nth-child(3) { animation-delay: 0.28s; }
+.slide.active .stagger > *:nth-child(4) { animation-delay: 0.38s; }
+.slide.active .stagger > *:nth-child(5) { animation-delay: 0.48s; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media print {
+  @page { size: 1600px 900px; margin: 0; }
+  html, body {
+    height: auto !important; overflow: visible !important; background: var(--bg-slide) !important;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .progress, .slide-counter, .notes-toggle, .notes-panel, .grain { display: none !important; }
+  .deck { position: static !important; width: 100% !important; height: auto !important; }
+  .slide {
+    position: relative !important; inset: auto !important; width: 1600px !important; height: 900px !important;
+    opacity: 1 !important; visibility: visible !important; transform: none !important; display: flex !important;
+    page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important;
+    break-inside: avoid !important; overflow: hidden !important; animation: none !important; transition: none !important;
+  }
+  .slide:last-child { page-break-after: auto !important; break-after: auto !important; }
+  .slide *, .slide::before, .slide::after {
+    animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="progress" id="progress"></div>
+<div class="slide-counter" id="counter"></div>
+<button class="notes-toggle" id="notesToggle" type="button">Speaker Notes [N]</button>
+<div class="notes-panel" id="speakerNotes"><p></p></div>
+<div class="deck" id="deck">
+<!-- __SLIDES_HTML__ -->
+</div>
+<script>
+/* __SLIDES_DATA__ */
+const slides = window.__slidesData || [];
+const deck = document.getElementById('deck');
+const progress = document.getElementById('progress');
+const counter = document.getElementById('counter');
+const notesToggle = document.getElementById('notesToggle');
+const notesPanel = document.getElementById('speakerNotes');
+const notesBody = notesPanel.querySelector('p');
+let current = 0;
+let notesOpen = false;
+
+function updateChrome() {
+  const sections = [...document.querySelectorAll('.slide')];
+  sections.forEach((slide, index) => slide.classList.toggle('active', index === current));
+  const slide = slides[current] || { notes: '' };
+  const width = slides.length ? ((current + 1) / slides.length) * 100 : 0;
+  progress.style.width = `${width}%`;
+  counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+  notesBody.innerHTML = slide.notes || 'No speaker notes for this slide.';
+}
+
+function goTo(index) {
+  current = Math.max(0, Math.min(index, slides.length - 1));
+  updateChrome();
+}
+function next() { goTo(current + 1); }
+function prev() { goTo(current - 1); }
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  notesPanel.classList.toggle('open', notesOpen);
+}
+
+notesToggle.addEventListener('click', toggleNotes);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+    event.preventDefault();
+    next();
+  } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+    event.preventDefault();
+    prev();
+  } else if (event.key === 'n' || event.key === 'N') {
+    toggleNotes();
+  }
+});
+deck.addEventListener('click', (event) => {
+  if (event.target.closest('button, a, video')) return;
+  const x = event.clientX / window.innerWidth;
+  if (x < 0.33) prev(); else next();
+});
+let touchStartX = 0;
+deck.addEventListener('touchstart', (event) => { touchStartX = event.touches[0].clientX; });
+deck.addEventListener('touchend', (event) => {
+  const diff = touchStartX - event.changedTouches[0].clientX;
+  if (Math.abs(diff) > 50) diff > 0 ? next() : prev();
+});
+updateChrome();
+</script>
+</body>
+</html>

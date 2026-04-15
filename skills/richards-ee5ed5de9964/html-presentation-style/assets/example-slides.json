@@ -1,0 +1,23 @@
+[
+  {
+    "act": "ACT 1 · OPENING",
+    "title": "Editorial Title Slide",
+    "notes": "Open with the core premise and one line of context.",
+    "layout": "hero stagger",
+    "bodyHtml": "<div class=\"stagger\" style=\"display:flex; flex-direction:column; gap:1.5rem; justify-content:center; min-height:70vh;\"><h1>Building <em>presentations</em><br>that feel deliberate</h1><p style=\"max-width:740px;\">Warm paper tones, serif-led headlines, and restrained motion create a calmer, more premium deck.</p></div>"
+  },
+  {
+    "act": "ACT 2 · FRAMEWORK",
+    "title": "Three-Part Framework",
+    "notes": "Explain each card briefly and move on before the slide becomes too verbal.",
+    "layout": "three-card stagger",
+    "bodyHtml": "<div class=\"stagger\"><h3>Three principles</h3><div class=\"three-card\"><div class=\"card\"><h2 style=\"font-size:2rem;\">1</h2><p>One idea per slide.</p></div><div class=\"card\"><h2 style=\"font-size:2rem;\">2</h2><p>Use notes for detail.</p></div><div class=\"card\"><h2 style=\"font-size:2rem;\">3</h2><p>Keep print export ready.</p></div></div></div>"
+  },
+  {
+    "act": "ACT 3 · CLOSE",
+    "title": "Quote Slide",
+    "notes": "Pause after the quote and let it land.",
+    "layout": "quote stagger",
+    "bodyHtml": "<div class=\"stagger\"><div class=\"quote-block\">\"The deck should feel like a point of view, not a template.\"</div><p class=\"muted\">Keep the surface simple so the argument carries the weight.</p></div>"
+  }
+]
