@@ -38,7 +38,7 @@ Use this skill when the user asks:
    Read the JSON output from the process and format it into a beautifully structured Markdown report containing:
    - A friendly morning greeting.
    - **Calendar**: Chronological list of today's meetings/events.
-   - **Emails**: Bulleted list of unread/important emails, summarizing the subject and sender. Highlight any urgent emails.
+   - **Emails**: Bulleted list of unread/important emails. For Urgent / Alerts emails, ALWAYS provide a bulleted list of individual emails with their exact subjects and senders (e.g., `- 🔴 **[Sender]**: [Subject]`), rather than grouping them into a narrative summary paragraph.
 
 4. **Deliver Output**: 
    Save the formatted Markdown to the user's workspace (e.g., `/Users/ds/dev/legal/output/daily-digest-YYYY-MM-DD.md`) and provide a brief, engaging summary in the chat!
