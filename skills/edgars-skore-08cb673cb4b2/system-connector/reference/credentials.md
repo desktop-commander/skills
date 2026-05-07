@@ -69,6 +69,7 @@ For re-runs:
 
 - If the real `.env` already exists and is complete, skip `setup` and run `test`.
 - If the real `.env` exists but required values are blank, re-emit the link and tell the user which variables are missing. Do not show existing values.
+- If a newly installed connector fails to connect, run `python3 <helper>.py test` before speculating. Treat missing or blank `.env` values as a likely cause, and explicitly tell the user the variable names and the exact resolved `.env` path to edit.
 - If the user rotates credentials, they edit the same file in place.
 
 The `where` subcommand reports the resolved path and whether the file exists, without revealing contents:
@@ -135,7 +136,7 @@ Replace `<path>` with the actual resolved path and `<helper>` with the real help
 4. **The assistant never asks the user to paste secrets into chat.**
 5. **Structured question tools are for logic only, never connection values.** If the host exposes a multiple-choice question UI, use it only for product disambiguation or similar flow decisions.
 6. **Every helper-based artifact ships a `.env.example` and `.gitignore`.** The template is copied by `setup`; the user edits the real `.env`.
-7. **Missing-credential errors point at the resolved file path.** Never say only "set env vars"; say which file to edit.
+7. **Missing-credential errors point at the resolved file path.** Never say only "set env vars" or "connection failed"; say which file to edit and which variables are missing.
 
 ## Edge cases
 

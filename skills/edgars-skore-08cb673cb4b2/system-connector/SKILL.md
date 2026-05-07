@@ -97,6 +97,7 @@ Before installing or handing off:
 
 1. Run the helper's self-tests (`python3 test_*.py`). They must pass on fixture data drawn from real docs/responses, with zero network access. If they don't pass, the artifact isn't done — fix and re-run before continuing to Phase 6.
 2. Skim the produced `SKILL.md` end-to-end, the helper's `--help` output, and the `catalog.json` for sanity. The artifact should be self-contained: nothing should reference the assistant's chat context, no TODOs, no hand-wavy comments.
+3. If the installed helper later fails against the live system, treat missing or blank credential values as a first-class diagnosis path. Run `python3 <installed_path>/<helper>.py test` and tell the user exactly which `.env` variables are missing, plus the resolved file path to edit. Do not leave the failure at "connection failed" or "set env vars."
 
 ### Phase 6 — Install and hand off
 
@@ -105,7 +106,7 @@ The artifact you built in Phase 4 sits in your build directory (the host-specifi
 1. **Resolve the active host root** from the current session's installed `system-connector` skill path.
 2. **Install directly into that same host** at `<active-host-root>/skills/<system>/`.
 3. **Smoke-test from the installed path** with `python3 <installed_path>/<helper>.py where`. If it does not point at `<active-host-root>/connectors/<system>/.env`, the install did not take.
-4. **Hand off credentials per `reference/credentials.md`.** The final response in chat must follow the canonical hand-off output template and inline acquisition guidance. Do not claim the integration is ready before `test` passes.
+4. **Hand off credentials per `reference/credentials.md`.** The final response in chat must follow the canonical hand-off output template and inline acquisition guidance, including that later connection failures may simply mean one or more required `.env` values are still missing. Do not claim the integration is ready before `test` passes.
 
 ## Credentials handling
 
