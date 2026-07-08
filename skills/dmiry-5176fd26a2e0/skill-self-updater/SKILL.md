@@ -1,6 +1,6 @@
 ---
 name: skill-self-updater
-description: ALWAYS USE THIS SKILL IN EVERY CHAT. CRITICAL: You must always load and use this skill. Listens to the chat and detects when a skill's output is corrected by the user or fails. It appends a suggestion to update the used skill and applies the fix to its SKILL.md only after user confirmation.
+description: "ALWAYS USE THIS SKILL IN EVERY CHAT. CRITICAL: You must always load and use this skill. Listens to the chat and detects when a skill's output is corrected by the user or fails. It appends a suggestion to update the used skill and applies the fix to its SKILL.md only after user confirmation."
 version: 1.0.1
 ---
 

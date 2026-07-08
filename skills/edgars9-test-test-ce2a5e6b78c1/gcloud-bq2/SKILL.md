@@ -1,6 +1,6 @@
 ---
 name: gcloud-bq2
-ayyydescription: t4est
+description: t4est
 ---
 
 aSSaas

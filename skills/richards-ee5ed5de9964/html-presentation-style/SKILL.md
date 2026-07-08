@@ -1,6 +1,6 @@
 ---
 name: html-presentation-style
-description: Creates polished HTML presentations in the same editorial style as the AI agents presentation on the Desktop: warm off-white backgrounds, Instrument Serif plus DM Sans typography, amber accents, spacious layouts, cinematic pacing, speaker notes, and built-in print CSS. Use when the user asks for an HTML slide deck, keynote-style presentation, conference talk deck, speaker-noted slides, or a printable 16:9 presentation page.
+description: "Creates polished HTML presentations in the same editorial style as the AI agents presentation on the Desktop: warm off-white backgrounds, Instrument Serif plus DM Sans typography, amber accents, spacious layouts, cinematic pacing, speaker notes, and built-in print CSS. Use when the user asks for an HTML slide deck, keynote-style presentation, conference talk deck, speaker-noted slides, or a printable 16:9 presentation page."
 version: 1.0.0
 ---
 

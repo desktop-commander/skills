@@ -1,6 +1,6 @@
 ---
 name: bvp-investment-memo
-description: This skill produces a BVP-style investment recommendation memorandum for any startup. Use this skill when asked to write, draft, analyze, or create an investment memo, VC memo, partnership memo, or investment recommendation. Modeled directly on 19 real Bessemer Venture Partners memos: Shopify, Twilio, Pinterest, Twitch, Auth0, Wix, Yelp, Dropcam, Rocket Lab, Fiverr, PagerDuty, SendGrid, Velo3D, LinkedIn, LifeLock, Mindbody, Toast, ServiceTitan, and Medi Assist.
+description: "This skill produces a BVP-style investment recommendation memorandum for any startup. Use this skill when asked to write, draft, analyze, or create an investment memo, VC memo, partnership memo, or investment recommendation. Modeled directly on 19 real Bessemer Venture Partners memos: Shopify, Twilio, Pinterest, Twitch, Auth0, Wix, Yelp, Dropcam, Rocket Lab, Fiverr, PagerDuty, SendGrid, Velo3D, LinkedIn, LifeLock, Mindbody, Toast, ServiceTitan, and Medi Assist."
 version: 1.1.0
 ---
 

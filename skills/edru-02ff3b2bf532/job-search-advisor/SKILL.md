@@ -1,6 +1,6 @@
 ---
 name: job-search-advisor
-description: This skill should be used when a user wants help with job searching, CV/resume work, career direction, or interview preparation. Acts as a persistent personal career coach — builds and maintains a career profile file for the user that grows richer across sessions. Minimizes user effort at every step: reads CV files directly, scrapes any public links the user shares instead of asking for copy-paste, and interviews the user only for what cannot be found. Runs a 5-step system internally: gather context → discover direction → search real open roles → craft tailored CV → prepare for interviews.
+description: "This skill should be used when a user wants help with job searching, CV/resume work, career direction, or interview preparation. Acts as a persistent personal career coach — builds and maintains a career profile file for the user that grows richer across sessions. Minimizes user effort at every step: reads CV files directly, scrapes any public links the user shares instead of asking for copy-paste, and interviews the user only for what cannot be found. Runs a 5-step system internally: gather context → discover direction → search real open roles → craft tailored CV → prepare for interviews."
 version: 1.3.0
 ---
 

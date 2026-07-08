@@ -1,6 +1,6 @@
 ---
 name: git-pipeline
-description: Git一括パイプラインスキル。stage → commit → push → PR を一括実行する。統合元: git-commit + yeet。トリガー: 「commitして」「pushして」「PR作成」「git操作」「デプロイして」「マージして」
+description: "Git一括パイプラインスキル。stage → commit → push → PR を一括実行する。統合元: git-commit + yeet。トリガー: 「commitして」「pushして」「PR作成」「git操作」「デプロイして」「マージして」"
 version: 1.0.0
 ---
 
