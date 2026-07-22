@@ -1,0 +1,916 @@
+<!-- ========================================================= -->
+<!-- v15 UNIFIED SITE MANAGER (replaces all legacy SM screens)   -->
+<!-- ========================================================= -->
+<style>
+#v15sm-btn{position:fixed;top:14px;right:14px;z-index:99998;background:var(--red,#992621);color:#fff;border:none;border-radius:999px;padding:10px 16px;font:600 13px/1 'DM Sans',sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+#v15sm-btn:hover{background:var(--red-d,#7f1f1b)}
+#v15sm-overlay{position:fixed;inset:0;z-index:99997;background:rgba(20,8,8,.55);display:none}
+#v15sm-overlay.open{display:block}
+#v15sm-panel{position:fixed;inset:24px;z-index:99999;background:#fff;border-radius:16px;display:none;grid-template-columns:280px 1fr 320px;grid-template-rows:56px 1fr;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.4);font-family:'DM Sans',sans-serif}
+#v15sm-panel.open{display:grid}
+#v15sm-head{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:var(--navy,#3a0f0d);color:#fff;border-radius:16px 16px 0 0}
+#v15sm-head h2{font:700 16px/1.2 'Playfair Display',serif;margin:0;color:#fff}
+#v15sm-head .v15sm-actions{display:flex;gap:8px;align-items:center}
+#v15sm-head button{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 12px;font:600 12px/1 'DM Sans',sans-serif;cursor:pointer}
+#v15sm-head button.primary{background:var(--gold,#ffc857);color:#3a0f0d;border-color:transparent}
+#v15sm-head button.primary:hover{filter:brightness(1.05)}
+#v15sm-side{background:#faf7f7;border-right:1px solid #eee;overflow-y:auto;padding:12px}
+#v15sm-side h3{font:700 11px/1 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#777;margin:14px 8px 6px}
+.v15sm-pagebtn{display:block;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:#222;padding:8px 10px;border-radius:8px;font:500 13px/1.2 'DM Sans',sans-serif;cursor:pointer;margin-bottom:2px;word-break:break-word}
+.v15sm-pagebtn:hover{background:#fff;border-color:#eee}
+.v15sm-pagebtn.active{background:var(--red,#992621);color:#fff}
+#v15sm-stage{background:#f4efef;overflow:hidden;display:flex;flex-direction:column;border-right:1px solid #eee}
+#v15sm-stage-bar{background:#fff;border-bottom:1px solid #eee;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:12px;color:#555}
+#v15sm-stage-bar code{background:#f4efef;padding:2px 6px;border-radius:4px;font-family:ui-monospace,monospace}
+#v15sm-frame{flex:1;border:0;background:#fff}
+#v15sm-aside{background:#fff;overflow-y:auto;padding:14px}
+#v15sm-aside h3{font:700 12px/1 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.06em;color:#3a0f0d;margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid var(--gold,#ffc857)}
+.v15sm-row{margin-bottom:14px}
+.v15sm-row label{display:block;font:600 11px/1 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:4px}
+.v15sm-color{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.v15sm-color input[type=color]{width:36px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;background:#fff}
+.v15sm-color input[type=text]{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font:500 12px ui-monospace,monospace}
+.v15sm-log{font-size:12px;color:#444;max-height:220px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;background:#faf7f7}
+.v15sm-log .item{padding:4px 0;border-bottom:1px dashed #eee}
+.v15sm-log .item:last-child{border-bottom:0}
+.v15sm-help{font-size:11px;color:#777;line-height:1.5;margin-top:8px}
+#v15sm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px 'DM Sans',sans-serif;z-index:100000;opacity:0;pointer-events:none;transition:opacity .2s}
+#v15sm-toast.show{opacity:1}
+/* edit affordances injected into preview iframe via inline style block we add */
+
+/* Hide the legacy Site Manager admin shells (these should not appear at all). */
+#sm-modal-overlay,
+#sm-overlay,
+#sm-login,
+#sm-pages-grid,
+#sm-content-area,
+#sm-block-modal-overlay,
+.signin-modal-legacy,
+[data-legacy-sitemanager] { display: none !important; visibility: hidden !important; }
+</style>
+
+<button id="v15sm-btn" onclick="v15smOpen()">⚙️ Site Manager</button>
+<div id="v15sm-status" style="position:fixed;top:14px;right:170px;z-index:99998;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:6px 12px;font:600 11px/1 'DM Sans',sans-serif;display:none">Supabase: checking…</div>
+<div id="v15sm-overlay" onclick="v15smClose()"></div>
+<div id="v15sm-panel" role="dialog" aria-label="Site Manager v15">
+  <div id="v15sm-head">
+    <h2>Site Manager — Edit & Export</h2>
+    <div class="v15sm-actions">
+      <button onclick="v15smSetDefaultMode()" title="Set default image upload mode">📷 Default image mode</button>
+      <button onclick="v15smUndo()" title="Undo last change">↶ Undo</button>
+      <button class="primary" onclick="v15smDownload()">💾 Save → Download HTML</button>
+      <button onclick="v15smClose()">✕ Close</button>
+    </div>
+  </div>
+  <div id="v15sm-side">
+    <h3>Pages / Sections</h3>
+    <div id="v15sm-pagelist"></div>
+    <div class="v15sm-help">Auto-detected from page structure. Click any text, image, or link in the preview to edit it.</div>
+  </div>
+  <div id="v15sm-stage">
+    <div id="v15sm-stage-bar">Editing: <code id="v15sm-curpage">—</code></div>
+    <iframe id="v15sm-frame" title="Preview"></iframe>
+  </div>
+  <div id="v15sm-aside">
+    <h3>Brand Colours</h3>
+    <div id="v15sm-colors"></div>
+    <h3 style="margin-top:18px">Edit Log</h3>
+    <div class="v15sm-log" id="v15sm-log"><div class="item" style="color:#888">No edits yet.</div></div>
+    <div class="v15sm-help">All edits are tracked here. Click <b>Save → Download HTML</b> to get a new file with everything baked in. Upload that file to your host.</div>
+  </div>
+</div>
+<div id="v15sm-toast"></div>
+
+<script>
+(function(){
+  // === v15 Unified Site Manager =========================================
+  // Edits the LIVE document so colour/text/image/link changes are visible.
+  // Save = serialize entire <html> outerHTML + downloads as file.
+  // The iframe preview re-uses the current document by writing its outerHTML
+  // into a srcdoc snapshot, so changes can be made directly on the live DOM
+  // through a click-capture overlay we add.
+
+  const log = [];
+  const COLORS = [
+    {name:'Maroon (primary)', varName:'--red'},
+    {name:'Maroon dark', varName:'--red-d'},
+    {name:'Maroon light', varName:'--red-l'},
+    {name:'Navy / deep', varName:'--navy'},
+    {name:'Navy mid', varName:'--navy-m'},
+    {name:'Gold accent', varName:'--gold'},
+    {name:'Cream bg', varName:'--cream'}
+  ];
+
+  function $(id){return document.getElementById(id);}
+  function toast(msg){
+    const t = $('v15sm-toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  function getCSSVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '';
+  }
+  function setCSSVar(name, val){
+    document.documentElement.style.setProperty(name, val);
+  }
+
+  function pushLog(text){
+    log.push({t:new Date().toLocaleTimeString(), text});
+    renderLog();
+  }
+  function renderLog(){
+    const el = $('v15sm-log');
+    if(!log.length){ el.innerHTML = '<div class="item" style="color:#888">No edits yet.</div>'; return; }
+    el.innerHTML = log.slice().reverse().map(e=>`<div class="item"><b>${e.t}</b> — ${e.text}</div>`).join('');
+  }
+
+  // Auto-detect pages/sections on the LIVE document.
+  function detectPages(){
+    const pages = [];
+    const seen = new Set();
+    function push(el, labelOverride){
+      if(!el) return;
+      const id = el.id || ('sec-' + pages.length);
+      if(seen.has(el)) return;
+      seen.add(el);
+      const label = labelOverride || labelFor(el) || id;
+      pages.push({id, label, el});
+    }
+
+    // 1) Hero / homepage
+    document.querySelectorAll('.hero-bg, [class*="hero"]').forEach(el=>{
+      // only treat as a page if it has a heading or is large
+      if(el.querySelector('h1,h2') || el.offsetHeight > 400) push(el);
+    });
+
+    // 2) explicit <section id="x">
+    document.querySelectorAll('section[id]').forEach(s=> push(s));
+
+    // 3) any <section> with a heading
+    document.querySelectorAll('section').forEach(s=>{
+      if(s.querySelector('h1, h2, h3')) push(s);
+    });
+
+    // 4) portal view containers (alumni, career, counselling, etc.)
+    document.querySelectorAll('[id^="p-view-"], [id^="alm-"], [id^="car-"], [id^="cs-"], [id^="fa-"], [id^="int-"], [id^="par-"], [id^="con-"], [id^="fs-"], [id^="gal-"], [id^="amb-"]').forEach(el=>{
+      // skip tiny elements like icons / pills
+      if(el.offsetHeight > 80 && (el.querySelector('h1, h2, h3') || el.textContent.trim().length > 60)) {
+        push(el);
+      }
+    });
+
+    // 5) main portal content wrapper
+    const main = document.querySelector('[role="main"], .p-content, #p-content-area, #p-view-area, main');
+    if(main) push(main, 'Main Content Area');
+
+    // de-duplicate: if a detected section is fully contained inside another detected section, keep only outer
+    // but allow both if labels differ a lot (gives navigation flexibility)
+    // Sort by DOM size descending
+    pages.sort((a,b)=> (b.el.offsetHeight||0) - (a.el.offsetHeight||0));
+
+    return pages;
+  }
+  function labelFor(el){
+    // try id-based friendly names first
+    const id = el.id || '';
+    const map = {
+      'hero': 'Home / Hero',
+      'about': 'About',
+      'career': 'Career Services',
+      'counselling': 'Counselling',
+      'financial': 'Financial Support',
+      'internship': 'Internship',
+      'parents': 'Parents',
+      'contact': 'Contact',
+      'gallery': 'Gallery',
+      'alumni': 'Alumni',
+      'ambassadors': 'Ambassadors',
+      'further-studies': 'Further Studies',
+      'devotional-system': 'Devotional System',
+      'p-view-area': 'Portal Content',
+      'p-content-area': 'Portal Wrapper'
+    };
+    for(const key in map){
+      if(id === key || id.startsWith(key+'-') || id.includes('-'+key)) return map[key];
+    }
+    const h = el.querySelector('h1, h2, h3');
+    let txt = (h && h.textContent || '').trim().replace(/\s+/g,' ');
+    if(txt.length > 60) txt = txt.slice(0,57) + '…';
+    return txt || (el.id || '');
+  }
+
+  let pages = [];
+  let currentPage = null;
+
+  function renderPageList(){
+    pages = detectPages();
+    const list = $('v15sm-pagelist');
+    list.innerHTML = '';
+    pages.forEach(p=>{
+      const b = document.createElement('button');
+      b.className = 'v15sm-pagebtn' + (currentPage && currentPage.id===p.id ? ' active' : '');
+      b.textContent = p.label || p.id;
+      b.onclick = ()=> selectPage(p);
+      list.appendChild(b);
+    });
+    if(!pages.length){
+      list.innerHTML = '<div class="v15sm-help">No sections detected.</div>';
+    }
+  }
+
+  function selectPage(p){
+    currentPage = p;
+    $('v15sm-curpage').textContent = p.label || p.id;
+    // scroll target in preview iframe document (which mirrors live doc)
+    refreshPreview(p.el);
+    renderPageList();
+  }
+
+  // Preview iframe shows a srcdoc snapshot of the live document.
+  // Clicking inside the preview maps back to the live element using a data-v15 path.
+  function tagElements(){
+    let i = 0;
+    document.querySelectorAll('body, body *').forEach(el=>{
+      if(!el.dataset.v15id){
+        el.dataset.v15id = 'v15_' + (i++);
+      }
+    });
+  }
+
+  function refreshPreview(scrollEl){
+    tagElements();
+    const iframe = $('v15sm-frame');
+    // Clone the live document and strip the Site Manager UI / script before serializing
+    const clone = document.documentElement.cloneNode(true);
+    ['v15sm-btn','v15sm-overlay','v15sm-panel','v15sm-toast','v15sm-text-modal',
+     'sm-modal-overlay','sm-overlay','sm-login','sm-pages-grid','sm-content-area','sm-block-modal-overlay'
+    ].forEach(id=>{
+      const el = clone.querySelector('#'+id); if(el) el.remove();
+    });
+    // Remove our own <script> blocks that contain the Site Manager (avoid recursive load)
+    clone.querySelectorAll('script').forEach(s=>{
+      if((s.textContent||'').indexOf('v15 Unified Site Manager') !== -1) s.remove();
+    });
+    const doc = '<!DOCTYPE html>' + clone.outerHTML;
+    iframe.srcdoc = doc;
+    iframe.onload = function(){
+      try{
+        installEditCapture(iframe.contentDocument);
+        if(scrollEl && scrollEl.dataset.v15id){
+          const t = iframe.contentDocument.querySelector('[data-v15id="'+scrollEl.dataset.v15id+'"]');
+          if(t) t.scrollIntoView({behavior:'instant', block:'start'});
+        }
+      }catch(e){ console.warn('preview install failed', e); }
+    };
+  }
+
+  function installEditCapture(idoc){
+    if(!idoc) return;
+    // inject helper styles into iframe
+    const st = idoc.createElement('style');
+    st.textContent = `
+      [data-v15-hover]{outline:2px dashed rgba(255,200,87,.9) !important; outline-offset:2px; cursor:pointer !important;}
+      [data-v15-editing]{outline:3px solid #ffc857 !important; outline-offset:2px;}
+    `;
+    idoc.head.appendChild(st);
+
+    // helper: detect clicks on our own UI in the parent doc - we ignore those
+    function isOnSiteManagerUI(target){
+      if(!target || !target.closest) return false;
+      // these elements live in the PARENT document, not iframe; but if our click is via iframe overlay it's safe.
+      // Guard for safety:
+      return !!(target.closest && (
+        target.closest('#v15sm-panel') ||
+        target.closest('#v15sm-btn') ||
+        target.closest('#v15sm-overlay') ||
+        target.closest('#v15sm-text-modal')
+      ));
+    }
+
+    // helper: detect clicks inside the live legitimate sign-in modal so the user's
+    // real login flow (Student/Employer/Counsellor/Admin/Alumni etc.) is NOT hijacked
+    function isOnLiveSignInModal(target){
+      if(!target || !target.closest) return false;
+      return !!(
+        target.closest('#signin-modal') ||
+        target.closest('#signin-overlay') ||
+        target.closest('#login-modal') ||
+        target.closest('#login-overlay') ||
+        target.closest('#sm-roles') ||
+        target.closest('#sm-reg') ||
+        target.closest('#emp-reg') ||
+        target.closest('[id^="sm-r"]') ||
+        target.closest('[id^="emp-r"]') ||
+        target.closest('[onclick*="toggleSignInModal"]') ||
+        target.closest('[onclick*="smShowRegisterCtx"]') ||
+        target.closest('[onclick*="smSelectRole"]') ||
+        target.closest('[onclick*="smRegStep"]') ||
+        target.closest('[onclick*="smSubmit"]') ||
+        target.closest('[onclick*="smEmpRegStep"]') ||
+        target.closest('[onclick*="smSubmitEmpReg"]') ||
+        target.closest('[onclick*="smManagerLogin"]') ||
+        target.closest('[onclick*="smBack"]') ||
+        target.closest('[onclick*="smShow"]')
+      );
+    }
+
+    // disable navigation inside iframe
+    idoc.addEventListener('click', function(e){
+      const t = e.target;
+      if(!t) return;
+      if(isOnSiteManagerUI(t)) return;
+      if(isOnLiveSignInModal(t)) return; // let legitimate sign-in flow handle its own clicks
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Walk down through transparent overlays to find the real visual element underneath
+      let target = unwrapOverlay(t);
+      const tag = target.tagName;
+
+      // Direct <img> -> image editor (priority over link wrappers)
+      if(tag === 'IMG'){
+        openImageEditor(target);
+        return;
+      }
+
+      // Element with background-image -> image editor (background swap)
+      const bg = hasBackgroundImage(target);
+      if(bg){
+        // If it ALSO contains an <img>, give the user a choice
+        const innerImg = target.querySelector('img');
+        if(innerImg){
+          chooseImageOrText(target, innerImg);
+        } else {
+          openBackgroundImageEditor(target);
+        }
+        return;
+      }
+
+      // Link wrapper -> if it wraps an <img>, edit the image (Alt+click to edit link instead)
+      const a = target.closest('a');
+      if(a){
+        const wrappedImg = a.querySelector('img');
+        if(wrappedImg && !e.altKey){
+          openImageEditor(wrappedImg);
+          return;
+        }
+        openLinkEditor(a);
+        return;
+      }
+
+      // Text candidate: smallest element containing only inline text
+      if(['P','SPAN','H1','H2','H3','H4','H5','H6','LI','LABEL','BUTTON','DIV','EM','STRONG','B','I','SMALL','TD','TH','BLOCKQUOTE'].includes(tag)){
+        openTextEditor(target);
+        return;
+      }
+    }, true);
+
+    // Helper: if the clicked element is a transparent/near-transparent overlay covering an image, pass through to the image
+    function unwrapOverlay(el){
+      if(!el || el.tagName === 'IMG') return el;
+      const cs = idoc.defaultView.getComputedStyle(el);
+      const isOverlayLike = (cs.position === 'absolute' || cs.position === 'fixed') &&
+                            (parseFloat(cs.opacity) < 0.9 ||
+                             cs.backgroundColor === 'rgba(0, 0, 0, 0)' ||
+                             cs.background.indexOf('gradient') !== -1);
+      if(!isOverlayLike) return el;
+      // Look at the parent's image content
+      const parent = el.parentElement;
+      if(!parent) return el;
+      const img = parent.querySelector('img');
+      if(img) return img;
+      if(hasBackgroundImage(parent)) return parent;
+      return el;
+    }
+
+    function hasBackgroundImage(el){
+      if(!el || !el.tagName) return false;
+      try{
+        const cs = idoc.defaultView.getComputedStyle(el);
+        const bg = (cs.backgroundImage || '').trim();
+        return bg && bg !== 'none' && bg.indexOf('url(') !== -1;
+      }catch(e){ return false; }
+    }
+
+    function chooseImageOrText(bgEl, innerImg){
+      // Quick inline menu near the cursor — minimal modal
+      const choice = window.confirm('OK = Change image\nCancel = Edit text instead');
+      if(choice){
+        openImageEditor(innerImg);
+      } else {
+        openTextEditor(bgEl);
+      }
+    }
+
+    // hover affordance
+    idoc.addEventListener('mouseover', e=>{
+      if(!e.target || !e.target.setAttribute) return;
+      if(isOnSiteManagerUI(e.target)) return;
+      if(isOnLiveSignInModal(e.target)) return;
+      e.target.setAttribute('data-v15-hover','');
+    }, true);
+    idoc.addEventListener('mouseout',  e=>{
+      if(!e.target || !e.target.removeAttribute) return;
+      e.target.removeAttribute('data-v15-hover');
+    }, true);
+  }
+
+  // (Parent-document click capture removed — the Site Manager only acts on the preview iframe.
+  // This is the cleanest way to avoid hijacking any live page UI: sign-in flow, forms, buttons,
+  // dropdowns, etc. all keep working exactly like a normal site.)
+
+  function findLiveEl(previewEl){
+    const id = previewEl && previewEl.dataset && previewEl.dataset.v15id;
+    if(!id) return null;
+    return document.querySelector('[data-v15id="'+id+'"]');
+  }
+
+  function openTextEditor(previewEl){
+    const live = findLiveEl(previewEl); if(!live) return;
+    const current = (live.innerText || '').replace(/\s+\n/g,'\n').trim();
+    const pageLabel = (currentPage && currentPage.label) ? currentPage.label : 'Page';
+    showTextModal(current, function(next){
+      if(next === null) return;
+      if(next === current) return;
+      live.innerText = next;
+      pushLog(pageLabel + ': Text edited — "' + (current.slice(0,40)||'(empty)') + '" → "' + next.slice(0,40) + '"');
+      refreshPreview(live);
+      toast('Text updated');
+    });
+  }
+
+  // Inline text-edit modal (replaces prompt())
+  function showTextModal(initialText, onSave){
+    let modal = document.getElementById('v15sm-text-modal');
+    if(modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'v15sm-text-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-family:"DM Sans",sans-serif';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:20px;width:min(640px, 90vw);box-shadow:0 30px 80px rgba(0,0,0,.4)">
+        <h3 style="margin:0 0 12px;font:700 16px/1.2 'Playfair Display',serif;color:#3a0f0d">Edit text</h3>
+        <textarea id="v15sm-text-input" rows="10" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font:14px/1.5 'DM Sans',sans-serif;resize:vertical;box-sizing:border-box">${escapeHtml(initialText)}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          <button id="v15sm-text-cancel" style="background:#f4efef;color:#222;border:1px solid #ddd;border-radius:8px;padding:9px 16px;font:600 13px 'DM Sans',sans-serif;cursor:pointer">Cancel</button>
+          <button id="v15sm-text-ok" style="background:var(--red,#992621);color:#fff;border:none;border-radius:8px;padding:9px 16px;font:600 13px 'DM Sans',sans-serif;cursor:pointer">Save</button>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#888">Tip: Cmd/Ctrl+Enter to save · Esc to cancel</div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    const input = document.getElementById('v15sm-text-input');
+    const okBtn = document.getElementById('v15sm-text-ok');
+    const caBtn = document.getElementById('v15sm-text-cancel');
+    setTimeout(()=>{ input.focus(); input.select(); }, 30);
+    function done(val){ modal.remove(); onSave(val); }
+    okBtn.onclick = ()=> done(input.value);
+    caBtn.onclick = ()=> done(null);
+    modal.addEventListener('click', e=>{ if(e.target === modal) done(null); });
+    input.addEventListener('keydown', e=>{
+      if(e.key === 'Escape'){ e.preventDefault(); done(null); }
+      if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); done(input.value); }
+    });
+  }
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function openLinkEditor(previewA){
+    const live = findLiveEl(previewA); if(!live) return;
+    const href = live.getAttribute('href') || '';
+    const txt = (live.innerText || '').trim();
+    const newHref = window.prompt('Link URL (href):', href);
+    if(newHref === null) return;
+    const newTxt = window.prompt('Link text:', txt);
+    if(newTxt === null) return;
+    live.setAttribute('href', newHref);
+    if(newTxt !== txt) live.innerText = newTxt;
+    pushLog('Link updated: ' + href + ' → ' + newHref);
+    refreshPreview(live);
+    toast('Link updated');
+  }
+
+  function openImageEditor(previewImg){
+    // Make sure we actually target an <img>, not a wrapper that contains one
+    let liveTarget = findLiveEl(previewImg);
+    if(!liveTarget) return;
+    if(liveTarget.tagName !== 'IMG'){
+      const innerImg = liveTarget.querySelector && liveTarget.querySelector('img');
+      if(innerImg) liveTarget = innerImg;
+    }
+    if(!liveTarget || liveTarget.tagName !== 'IMG'){
+      // Fallback: maybe a background-image element was passed
+      if(liveTarget && hasBackgroundImageLive(liveTarget)){
+        return openBackgroundImageEditor(liveTarget);
+      }
+      toast('Could not locate the image to replace');
+      return;
+    }
+    const live = liveTarget;
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async function(){
+      const f = input.files && input.files[0]; if(!f) return;
+      try{
+        toast('Uploading image…');
+        const url = await uploadOrEmbed(f);
+        live.setAttribute('src', url);
+        try { live.src = url; } catch(_) {}
+        if(live.hasAttribute('srcset')) live.removeAttribute('srcset');
+        if(live.hasAttribute('data-src')) live.setAttribute('data-src', url);
+        const pageLabel = (currentPage && currentPage.label) ? currentPage.label : 'Page';
+        const mode = supabaseReady() ? 'Supabase' : 'base64';
+        pushLog(pageLabel + ': Image replaced [' + mode + '] — ' + (live.alt || '(img)'));
+        refreshPreview(live);
+        toast('Image replaced');
+      } catch(err) {
+        console.error(err);
+        toast('Upload failed — falling back to base64');
+        embedAsBase64(f).then(dataUrl => {
+          live.setAttribute('src', dataUrl);
+          try { live.src = dataUrl; } catch(_) {}
+          refreshPreview(live);
+        });
+      }
+    };
+    input.click();
+  }
+
+  function openBackgroundImageEditor(previewEl){
+    const live = findLiveEl(previewEl); if(!live) return;
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async function(){
+      const f = input.files && input.files[0]; if(!f) return;
+      try{
+        toast('Uploading image…');
+        const url = await uploadOrEmbed(f);
+        const computed = getComputedStyle(live).backgroundImage || '';
+        const newUrl = 'url("' + url + '")';
+        let newBg = newUrl;
+        if(computed && computed.indexOf('linear-gradient') !== -1){
+          newBg = computed.replace(/url\([^)]+\)/, newUrl);
+        }
+        live.style.setProperty('background-image', newBg, 'important');
+        live.style.setProperty('background-size', 'cover', 'important');
+        live.style.setProperty('background-position', 'center', 'important');
+        live.style.setProperty('background-repeat', 'no-repeat', 'important');
+        const pageLabel = (currentPage && currentPage.label) ? currentPage.label : 'Page';
+        const mode = supabaseReady() ? 'Supabase' : 'base64';
+        pushLog(pageLabel + ': Background image replaced [' + mode + '] on ' + (live.tagName.toLowerCase()) + (live.id ? '#'+live.id : ''));
+        refreshPreview(live);
+        toast('Background image replaced');
+      } catch(err) {
+        console.error(err);
+        toast('Upload failed — falling back to base64');
+      }
+    };
+    input.click();
+  }
+
+  // ======================================================================
+  // Supabase mode (optional). Auto-detected from page if URL + anon key exist.
+  // Bucket: site-editor-photos. If unavailable, falls back to base64 embed.
+  // ======================================================================
+  const V15SM_BUCKET = 'site-editor-photos';
+  let _v15sb = null;            // {url, anon, headers}
+  let _v15sbChecked = false;
+
+  function detectSupabase(){
+    if(_v15sbChecked) return _v15sb;
+    _v15sbChecked = true;
+    try{
+      const html = document.documentElement.innerHTML;
+      // Try several common naming conventions:
+      //   SUPABASE_URL, SUPABASE_ANON_KEY
+      //   SB_URL, SB_KEY  (compact)
+      //   supabaseUrl, supabaseKey  (camelCase)
+      const urlPatterns = [
+        /SUPABASE_URL\s*=\s*['"]([^'"]+)['"]/,
+        /\bSB_URL\s*=\s*['"]([^'"]+)['"]/,
+        /\bsupabaseUrl\s*[:=]\s*['"]([^'"]+)['"]/,
+        /['"](https?:\/\/[a-z0-9-]+\.supabase\.co)['"]/
+      ];
+      const keyPatterns = [
+        /SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)['"]/,
+        /\bSB_KEY\s*=\s*['"]([^'"]+)['"]/,
+        /\bsupabaseKey\s*[:=]\s*['"]([^'"]+)['"]/,
+        /['"](eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)['"]/
+      ];
+      let url=null, key=null;
+      for(const p of urlPatterns){
+        const m = html.match(p);
+        if(m){ url = m[1]; break; }
+      }
+      for(const p of keyPatterns){
+        const m = html.match(p);
+        if(m){ key = m[1]; break; }
+      }
+      if(url && key){
+        _v15sb = {
+          url: url.replace(/\/+$/, ''),
+          anon: key
+        };
+      }
+      // Note: we intentionally do NOT auto-detect existing buckets from page content.
+      // Always use the configured V15SM_BUCKET unless explicitly overridden by the user.
+    }catch(e){ console.warn('Supabase detect error', e); }
+    return _v15sb;
+  }
+  function supabaseReady(){
+    const cfg = detectSupabase();
+    return !!cfg;
+  }
+  // Per-session default image mode: 'ask' | 'supabase' | 'base64'
+  let _v15imageMode = 'ask';
+
+  function chooseImageMode(){
+    return new Promise((resolve)=>{
+      // If user picked a non-ask default, return it directly
+      if(_v15imageMode === 'supabase' || _v15imageMode === 'base64'){
+        return resolve(_v15imageMode);
+      }
+      const cfg = detectSupabase();
+      const sbReady = !!cfg;
+      let modal = document.getElementById('v15sm-mode-modal');
+      if(modal) modal.remove();
+      modal = document.createElement('div');
+      modal.id = 'v15sm-mode-modal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-family:"DM Sans",sans-serif';
+      const sbDisabled = sbReady ? '' : 'opacity:.5;cursor:not-allowed';
+      modal.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:22px;width:min(540px,92vw);box-shadow:0 30px 80px rgba(0,0,0,.4)">
+          <h3 style="margin:0 0 6px;font:700 17px/1.2 'Playfair Display',serif;color:#3a0f0d">Where should this image go?</h3>
+          <p style="margin:0 0 16px;font-size:13px;color:#555;line-height:1.5">Choose how to store the new image. Supabase keeps the HTML file small. Base64 embeds the image directly into the HTML.</p>
+
+          <button id="v15sm-mode-sb" ${sbReady?'':'disabled'} style="display:flex;width:100%;text-align:left;background:#f7fff8;border:2px solid #2e7d32;border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer;align-items:flex-start;gap:12px;${sbDisabled}">
+            <span style="font-size:22px">☁️</span>
+            <div style="flex:1">
+              <div style="font:700 14px 'DM Sans',sans-serif;color:#2e7d32">Supabase Storage <span style="font-weight:400;color:#555;font-size:12px">(recommended)</span></div>
+              <div style="font-size:12px;color:#555;line-height:1.5;margin-top:2px">Uploads to the <code style="background:#eee;padding:1px 4px;border-radius:3px">site-editor-photos</code> bucket. HTML file stays small.</div>
+              ${sbReady ? '' : '<div style="font-size:11px;color:#a02;margin-top:4px">Not available — Supabase config not detected in this file.</div>'}
+            </div>
+          </button>
+
+          <button id="v15sm-mode-b64" style="display:flex;width:100%;text-align:left;background:#fffbf2;border:2px solid #c48a00;border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer;align-items:flex-start;gap:12px">
+            <span style="font-size:22px">📦</span>
+            <div style="flex:1">
+              <div style="font:700 14px 'DM Sans',sans-serif;color:#8a6500">Base64 (embed in HTML)</div>
+              <div style="font-size:12px;color:#555;line-height:1.5;margin-top:2px">Fully self-contained. No infrastructure. But the HTML file grows by roughly the image size × 1.33.</div>
+            </div>
+          </button>
+
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-top:6px">
+            <input type="checkbox" id="v15sm-mode-remember"> Remember for this session
+          </label>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:12px">
+            <button id="v15sm-mode-cancel" style="background:#f4efef;color:#222;border:1px solid #ddd;border-radius:8px;padding:9px 16px;font:600 13px 'DM Sans',sans-serif;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      function done(val){
+        const remember = document.getElementById('v15sm-mode-remember');
+        if(remember && remember.checked && val) _v15imageMode = val;
+        modal.remove();
+        resolve(val);
+      }
+      document.getElementById('v15sm-mode-sb').onclick = ()=> sbReady && done('supabase');
+      document.getElementById('v15sm-mode-b64').onclick = ()=> done('base64');
+      document.getElementById('v15sm-mode-cancel').onclick = ()=> done(null);
+      modal.addEventListener('click', e=>{ if(e.target === modal) done(null); });
+    });
+  }
+
+  function v15smSetDefaultMode(){
+    const cfg = detectSupabase();
+    const choices = [
+      { v:'ask',     label:'Ask every time (default)' },
+      { v:'supabase',label:'Always: Supabase' + (cfg?'':' (unavailable)'), disabled:!cfg },
+      { v:'base64',  label:'Always: Base64 (embed in HTML)' }
+    ];
+    let modal = document.getElementById('v15sm-def-modal');
+    if(modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'v15sm-def-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-family:"DM Sans",sans-serif';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:20px;width:min(420px,90vw);box-shadow:0 30px 80px rgba(0,0,0,.4)">
+        <h3 style="margin:0 0 12px;font:700 16px/1.2 'Playfair Display',serif;color:#3a0f0d">Default image mode</h3>
+        ${choices.map(c=>`
+          <button data-v="${c.v}" ${c.disabled?'disabled':''} style="display:block;width:100%;text-align:left;background:${_v15imageMode===c.v?'#fff5f0':'#fff'};border:2px solid ${_v15imageMode===c.v?'var(--red,#992621)':'#ddd'};border-radius:8px;padding:10px 14px;margin-bottom:8px;font:600 13px 'DM Sans',sans-serif;cursor:${c.disabled?'not-allowed':'pointer'};opacity:${c.disabled?.5:1}">
+            ${c.label}
+          </button>
+        `).join('')}
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button id="v15sm-def-cancel" style="background:#f4efef;color:#222;border:1px solid #ddd;border-radius:8px;padding:8px 14px;font:600 12px 'DM Sans',sans-serif;cursor:pointer">Close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelectorAll('button[data-v]').forEach(b=>{
+      b.onclick = ()=>{
+        if(b.disabled) return;
+        _v15imageMode = b.getAttribute('data-v');
+        modal.remove();
+        toast('Image mode: ' + _v15imageMode);
+      };
+    });
+    document.getElementById('v15sm-def-cancel').onclick = ()=> modal.remove();
+    modal.addEventListener('click', e=>{ if(e.target === modal) modal.remove(); });
+  }
+  window.v15smSetDefaultMode = v15smSetDefaultMode;
+
+  async function uploadOrEmbed(file){
+    // Decide mode (ask user if not set)
+    const cfg = detectSupabase();
+    const mode = await chooseImageMode();
+    if(!mode) throw new Error('User cancelled');
+    if(mode === 'base64' || !cfg){
+      return embedAsBase64(file);
+    }
+    // Supabase upload
+    try{
+      const safe = file.name.replace(/[^a-z0-9._-]+/gi,'_').slice(0,60);
+      const path = 'edits/' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '_' + safe;
+      const bucket = V15SM_BUCKET;
+      const url = cfg.url + '/storage/v1/object/' + bucket + '/' + encodeURIComponent(path);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + cfg.anon,
+          'apikey': cfg.anon,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true'
+        },
+        body: file
+      });
+      if(!res.ok){
+        const txt = await res.text();
+        throw new Error('Supabase upload failed: ' + res.status + ' ' + txt);
+      }
+      return cfg.url + '/storage/v1/object/public/' + bucket + '/' + encodeURIComponent(path);
+    } catch(err){
+      console.warn('Supabase upload error, embedding as base64', err);
+      return embedAsBase64(file);
+    }
+  }
+  function embedAsBase64(file){
+    return new Promise((resolve, reject)=>{
+      const fr = new FileReader();
+      fr.onload = ()=> resolve(fr.result);
+      fr.onerror = ()=> reject(fr.error);
+      fr.readAsDataURL(file);
+    });
+  }
+
+  // Live-doc version of background-image detection (the one in installEditCapture uses the iframe's window)
+  function hasBackgroundImageLive(el){
+    if(!el || !el.tagName) return false;
+    try{
+      const cs = window.getComputedStyle(el);
+      const bg = (cs.backgroundImage || '').trim();
+      return bg && bg !== 'none' && bg.indexOf('url(') !== -1;
+    }catch(e){ return false; }
+  }
+
+  function renderColors(){
+    const wrap = $('v15sm-colors');
+    wrap.innerHTML = '';
+    COLORS.forEach(c=>{
+      const cur = getCSSVar(c.varName) || '#000000';
+      const row = document.createElement('div');
+      row.className = 'v15sm-row';
+      row.innerHTML = `
+        <label>${c.name} <code style="font-weight:400;color:#888">${c.varName}</code></label>
+        <div class="v15sm-color">
+          <input type="color" value="${normalizeHex(cur)}" data-var="${c.varName}">
+          <input type="text" value="${cur}" data-var-text="${c.varName}">
+        </div>
+      `;
+      wrap.appendChild(row);
+      const colorInp = row.querySelector('input[type=color]');
+      const textInp  = row.querySelector('input[type=text]');
+      colorInp.addEventListener('input', ()=>{
+        textInp.value = colorInp.value;
+        setCSSVar(c.varName, colorInp.value);
+      });
+      colorInp.addEventListener('change', ()=>{
+        pushLog('Colour ' + c.varName + ' → ' + colorInp.value);
+        refreshPreview();
+      });
+      textInp.addEventListener('change', ()=>{
+        const v = textInp.value.trim();
+        setCSSVar(c.varName, v);
+        if(/^#[0-9a-fA-F]{6}$/.test(v)) colorInp.value = v;
+        pushLog('Colour ' + c.varName + ' → ' + v);
+        refreshPreview();
+      });
+    });
+  }
+  function normalizeHex(v){
+    v = (v||'').trim();
+    if(/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+    // fallback: render in a temp el to get computed hex-ish
+    const d = document.createElement('div'); d.style.color = v; document.body.appendChild(d);
+    const rgb = getComputedStyle(d).color; document.body.removeChild(d);
+    const m = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if(!m) return '#000000';
+    return '#' + [m[1],m[2],m[3]].map(n=>parseInt(n,10).toString(16).padStart(2,'0')).join('');
+  }
+
+  function v15smUndo(){
+    if(!log.length){ toast('Nothing to undo'); return; }
+    // simple: re-render preview; per-change reverse not stored. Document remains as edited.
+    // We keep this as a friendly note + suggest reload for hard reset.
+    toast('Undo unavailable per-step — reload to discard ALL changes');
+  }
+  window.v15smUndo = v15smUndo;
+
+  function v15smDownload(){
+    // Clean up our editor markers before serializing
+    const clone = document.documentElement.cloneNode(true);
+    clone.querySelectorAll('[data-v15id]').forEach(el => el.removeAttribute('data-v15id'));
+    clone.querySelectorAll('[data-v15-hover]').forEach(el => el.removeAttribute('data-v15-hover'));
+    clone.querySelectorAll('[data-v15sm-id]').forEach(el => el.removeAttribute('data-v15sm-id'));
+    // Strip the Site Manager UI from the output
+    ['v15sm-btn','v15sm-overlay','v15sm-panel','v15sm-toast','v15sm-status'].forEach(id=>{
+      const el = clone.querySelector('#'+id); if(el) el.remove();
+    });
+    // Also strip the script tag that built it? Leave it — harmless without buttons.
+
+    const out = '<!DOCTYPE html>\n' + clone.outerHTML;
+    const blob = new Blob([out], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const dt = new Date().toISOString().slice(0,10);
+    a.download = 'CCSD_portal_central_v15_edited_' + dt + '.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    pushLog('Downloaded edited HTML');
+    toast('Download started');
+  }
+  window.v15smDownload = v15smDownload;
+
+  function v15smOpen(){
+    $('v15sm-overlay').classList.add('open');
+    $('v15sm-panel').classList.add('open');
+    renderPageList();
+    renderColors();
+    if(pages.length && !currentPage) selectPage(pages[0]);
+    else if(currentPage) refreshPreview(currentPage.el);
+    // Update status pill
+    const pill = $('v15sm-status');
+    if(pill){
+      const cfg = detectSupabase();
+      pill.style.display = 'block';
+      if(cfg){
+        pill.style.background = 'rgba(34,139,34,.85)';
+        const host = (cfg.url.replace(/^https?:\/\//,'').split('.')[0]) || 'project';
+        pill.textContent = 'Supabase: ' + host + ' · bucket: ' + V15SM_BUCKET;
+      } else {
+        pill.style.background = 'rgba(120,90,0,.85)';
+        pill.textContent = 'Supabase mode: off — images saved as base64';
+      }
+    }
+  }
+  function v15smClose(){
+    $('v15sm-overlay').classList.remove('open');
+    $('v15sm-panel').classList.remove('open');
+  }
+  window.v15smOpen = v15smOpen;
+  window.v15smClose = v15smClose;
+
+  // NOTE: the live page outside the preview is left completely alone.
+  // Click capture only runs inside the preview iframe (installEditCapture above).
+  // The legitimate sign-in flow uses its own onclick handlers and is no longer touched
+  // by the Site Manager. This avoids any conflict with role selection / login forms.
+
+  // Disable legacy Site Manager admin shells (these should never appear — superseded by v15 SM)
+  ['openSiteManager','smOpenManager'].forEach(fn=>{
+    if(typeof window[fn] === 'function'){
+      window['_legacy_'+fn] = window[fn];
+      window[fn] = function(){ v15smOpen(); };
+    }
+  });
+
+  // Ensure any leftover old-style SM dashboard shells are hidden on first paint
+  function v15smHideLegacyModals(){
+    ['sm-modal-overlay','sm-overlay','sm-login','sm-pages-grid','sm-content-area'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el){
+        el.style.setProperty('display','none','important');
+        el.setAttribute('aria-hidden','true');
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', v15smHideLegacyModals);
+  setTimeout(v15smHideLegacyModals, 200);
+  setTimeout(v15smHideLegacyModals, 1000);
+  setTimeout(v15smHideLegacyModals, 3000);
+
+  // First tag pass so preview links back to live nodes
+  document.addEventListener('DOMContentLoaded', tagElements);
+  if(document.readyState !== 'loading') tagElements();
+})();
+</script>
